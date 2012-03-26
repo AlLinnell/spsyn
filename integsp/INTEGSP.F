@@ -91,6 +91,9 @@ C     (Spectrum)
 C     Read control for type interpolation
       CALL IREAD (JKY)
       CALL DUMMY(4)
+C     Read scaling factor to produce spectrum flux in correct units.
+      CALL IREAD(LSC)
+      CALL DUMMY(2)
 C     Read control for integration rule
       CALL IREAD(ITG)
 C     Be sure NSD is even number
@@ -150,7 +153,9 @@ C     If JKY=3 set up spline fit.
       DO J=1,JND
           IF (KEY.LT.2) THEN
           READ ( IN3, FMT2, END=2, ERR=90) X,Y
+          IF (LSC.EQ.1) THEN
           Y=Y*1.0E-4
+          END IF
 C     Convert wavelength to cgs units
           X=X*1.0D-8*FMP2
           END IF
