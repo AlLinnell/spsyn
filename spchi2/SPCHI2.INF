@@ -1,0 +1,9 @@
+*            *SPCHI2             
+*         Information file for program SPCHI2
+*         File name=SPCHI2.INF
+*
+*
+Number of bins for differences                        NBIN     : 20
+Starting wavelength for window                        WLST1    : 1000.0
+Ending wavelength for window                          WLND1    : 3000.0
+Reference flux level, synthetic spectrum              RFLX     : 7.95237E41

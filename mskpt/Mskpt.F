@@ -1,0 +1,30 @@
+      Program Mskpt
+	IMPLICIT DOUBLE PRECISION (A-H,O,Z)
+	DATA WL1/970.0/
+	DATA WL2/1180.0/
+	CHARACTER * 4 KEY,KY
+	CHARACTER * 45 A
+	KEY = ' *  '
+C	A = 'D:\CVsystems\V3885Sgr\V3885_Sgr_FUSE_0.02.dat'
+      A = 'D:\CVsystems\V3885Sgr\obsclean.dat'
+C
+  100 FORMAT (F13.2,E13.5,E13.5)
+  101 FORMAT (F13.2,E13.5,E13.5,A4)
+C
+      OPEN (UNIT = 5, FILE = A)
+	OPEN (UNIT = 6, FILE='D:\OA2\UPDATE.DAT', STATUS = 'REPLACE')
+C
+      DO J=1,300000
+C	     READ (5,100,END=1,ERR=2) WL,FX,ERRFX
+           READ (5,101,end=1,err=2) WL,FX,ERRFX,KY
+		 IF ((WL.GE.WL1).AND.(WL.LE.WL2)) THEN
+			WRITE (6,101) WL,FX,ERRFX,KEY
+		 ELSE
+			WRITE (6,101) WL,FX,ERRFX,KY
+	     END IF
+	END DO
+    1 CLOSE (5, STATUS = 'KEEP')
+      CLOSE (6, STATUS = 'KEEP')
+	STOP
+    2 STOP
+      END

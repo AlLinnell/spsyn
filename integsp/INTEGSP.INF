@@ -1,0 +1,37 @@
+*            **INTSP             
+*         Information file for program INTEGSP
+*         File name=INTSP.INF
+*
+*
+Format for first data file                              FMT1   : (E16.6,E16.6)
+*
+Format for second data file                             FMT2   : (F14.3,E14.5)
+*
+Starting wavelength                                     WST    : 4750.0        
+* In Angstroms
+Ending wavelength                                       WND    : 6500.0         
+* In Angstroms
+Number of subdivisions                                  NSD    :9000
+*                                                       
+Key for type integration weighting                      KEY    : 0
+If KEY=1 multiply by (lambda)
+If KEY=0 do not multiply by (lambda)
+*                                                       IKY1   : 1
+If IKY1=0 filter wavelengths are in Angstroms
+If IKY1=1 filter wavelengths are in microns
+If IKY1=2 filter wavelengths are in nanometers
+*                                                       IKY2   : 0
+If IKY2=0 spectrum wavelengths are in Angstroms
+If IKY2=1 spectrum wavelengths are in microns
+If IKY2=2 spectrum wavelengths are in nanometers
+Key for production of integrand                         JKY    : 3
+If JKY=0 use linear interpolation
+If JKY=1 use parabolic interpolation
+If JKY=2 use lagrangian third degree interpolation
+If JKY=3 use spline fit
+Key for integration rule                                ITG    : 1
+If ITG=0 use trapezoidal rule
+If ITG=1 use Simpson's rule
+*
+NOTE! When you change WST and WND, be sure to change the
+filter designation in integspscr.

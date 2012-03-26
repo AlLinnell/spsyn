@@ -1,0 +1,13 @@
+#!/bin/sh
+# script to copy necessary files to ../../ia/ and ~binsyn/oa
+# this script produces light curves and corresponding plot files
+set -e
+cp ../../binsyn/ia/MPSP.INF ./
+cp ../../binsyn/oa/SYSC1.DAT ./
+#cp ../../binsyn/synspadd/SMad0830.001 ./
+./mpsp
+cp SYSC1A.DAT ../../binsyn/oa/
+set +e
+
+
+

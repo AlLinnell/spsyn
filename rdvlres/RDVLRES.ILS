@@ -1,0 +1,7 @@
+D:\IA2\RDVLRES.INF
+D:\V360Lac\rdvlz24n.dat                !observed rdvel curve
+D:\V360Lac\rdvlz17nxx.dat                      !second observed rdvel curve
+D:\OA2\RDVL2.DAT                         !theoretical radial vel. curves
+D:\OA2\RDVLRES.DAT                       !log of calculated parameters
+D:\OA2\RDVLTPL.DAT                     !calculated rdvl. interpolated to observed
+D:\OA2\RDVLRRS.DAT                     !residuals

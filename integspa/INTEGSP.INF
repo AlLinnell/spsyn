@@ -1,0 +1,21 @@
+*            **INTSP             
+*         Information file for program INTEGSP
+*         File name=INTSP.INF
+*
+*
+Format for first data file                              FMT1   : (F6.1,F10.1)
+*
+Format for second data file                             FMT2   : (F14.3,F14.5)
+*
+Starting wavelength                                     WST    : 7100.0        
+* In Angstroms
+Ending wavelength                                       WND    : 9300.0         
+* In Angstroms
+Number of subdivisions                                  NSD    : 900
+*                                                       
+Key for type integration                                KEY    : 2
+If KEY=1 multiply by (lambda)
+If KEY=0 do not multiply by (lambda)
+*
+NOTE! When you change WST and WND, be sure to change the
+filter designation in integspscr.

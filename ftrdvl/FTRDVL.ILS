@@ -1,0 +1,6 @@
+D:\IA2\FTRDVL.INF
+D:\V360Lac\rdvlz24.dat                !observed spectrum
+D:\V360Lac\rdvz17a.dat                      !synthetic spectrum,to be normalized
+D:\OA2\FTRDVL.DAT                       !log of calculated parameters
+D:\OA2\FTRDTP.DAT                     !calculated rdvl. interpolated to observed
+D:\OA2\FTRDRS.DAT                     !residuals

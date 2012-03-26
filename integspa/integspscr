@@ -1,0 +1,14 @@
+#!/bin/sh
+# script to copy necessary files to ../../ia/ and ~binsyn/oa
+# this script produces light curves and corresponding plot files
+#set -e
+cp ../../binsyn/ia/INTEGSP.INF ./
+cp ../../binsyn/rfda/VFLT.DAT ./SPEC1.DAT
+#cp ../../binsystems/Vega/alphalyr.dat ./SPEC2.DAT
+cp ../../binsystems/Vega/kurmodvis.7 ./SPEC2.DAT
+./integsp
+cp PROD.DAT ../../binsyn/oa/
+set +e
+
+
+

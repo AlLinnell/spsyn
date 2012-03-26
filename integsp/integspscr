@@ -1,0 +1,12 @@
+#!/bin/sh -e
+# script to run integsp
+# input file is in directory ../ia
+# output file goes to directory ../oa
+cp ../../binsyn/ia/INTEGSP.INF ./
+cp ../../binsyn/rfda/landov.fad ./SPEC1.DAT
+cp ../../binsystems/Vega/vega1994.dat ./SPEC2.DAT
+#cp ../../binsystems/Vega/atlas9vega1994.txt ./SPEC2.DAT
+#cp ../../binsystems/Vega/alphalyr.dat ./SPEC2.DAT
+#cp ../../binsystems/Vega/kurmodcp05fitzz2R500vis.7 ./SPEC2.DAT
+./integsp
+cp PROD.DAT ../../binsyn/oa/PROD.DAT
