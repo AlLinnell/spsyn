@@ -10,7 +10,7 @@ C     spectrum
       DATA IN1,IN2,NOUT1/1,2,3/
   100 FORMAT (A48)
 C  101 FORMAT (F15.6,E15.6)
-  101 FORMAT (F10.3,E10.3)
+  101 FORMAT (F10.3,1PE10.3)
 C*********************************************************************
       OPEN (UNIT = 10,     FILE ='MPSP.ILS',
      $STATUS = 'OLD')
@@ -25,7 +25,7 @@ C*********************************************************************
       CALL GTLBL( LABEL, LBLERR)
       IF (LBLERR.EQ.(-1)) CALL PMDSTOP
 C     Read multiplier
-      CALL DREAD ( RF, 'E12.4')
+      CALL DREAD ( RF, 'E14.7')
       DO J=1,200000
           READ ( IN2, 101, END=1, ERR=90) OWL(J),OFL(J)
 		OFL(J)=OFL(J)*RF
