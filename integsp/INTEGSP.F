@@ -15,7 +15,8 @@ C     The output file is PROD.DAT in directory /oa
 C     If KEY=0, integrate the product of the spectrum and the transmission profile
 C         divided by the integral of the transmission profile.
 C     If KEY=1, include the product with wavelength, numerator and denominator.
-C     If KEY=2, integrate the product of sin(x)*cos(x), 0 to pi,
+C     If KEY=2, calculate AB magnitudes.
+C     If KEY=3, integrate the product of sin(x)*cos(x), 0 to pi,
 C         and separately integrate sin(x), 0 to pi.
 C
       IMPLICIT DOUBLE PRECISION (A-H,O-Z)
@@ -30,6 +31,7 @@ C
       CHARACTER * 80 FMT1,FMT2
       DATA IN1,IN2,IN3,NOUT1,NOUT2,NOUT3,NOUT4/1,2,3,4,55,6,7/
       DATA ER/1.D-8/
+      DATA VC/2.997925E10/
   100 FORMAT (A48)
   101 FORMAT ('Integral of sin(x)*cos(x)=',F15.12,/,
      $'Integral of sin(x)=',F15.12)
@@ -73,7 +75,7 @@ C     Read number of subintervals
       CALL DUMMY(1)
 C     Read control for type integration weighting
       CALL IREAD (KEY)
-      CALL DUMMY(3)
+      CALL DUMMY(4)
 C     Read control for wavelengths in Angstroms, microns, or namometers
 C     (Filter)
       CALL IREAD (IKY1)
@@ -90,6 +92,10 @@ C     (Spectrum)
       CALL DUMMY(3)
 C     Read control for type interpolation
       CALL IREAD (JKY)
+C     Don't use spline interpolation on sine, cosine
+      IF ((JKY.EQ.3).AND.(KEY.EQ.3)) THEN
+         JKY=2
+      END IF      
       CALL DUMMY(4)
 C     Read scaling factor to produce spectrum flux in correct units.
       CALL DREAD(SCL,'E8.1')
@@ -110,7 +116,7 @@ C     Set limit on number of entries to read in (200000).
       JND=200000
       KCT=0
       PI=3.1415926535898D0
-      IF (KEY.GT.1) THEN
+      IF (KEY.EQ.3) THEN
 C     Set up test of integration accuracy.
         WST=0.D0
         WND=PI
@@ -119,63 +125,64 @@ C     Set up test of integration accuracy.
         IF (NSD+1.LT.JND) JND=NSD+1
       END IF
       DO J=1,JND
-          IF (KEY.LT.2) THEN
-C     Read wavelength in Angstroms.
+          IF (KEY.LT.3) THEN
+C     Read wavelength in Angstroms. This is the filter transmission function.
           READ ( IN2, FMT1, END=1, ERR=90) X,Y
-          END IF
 C     Convert wavelength to cgs units.
 C     Allow for wavelengths in Angstroms or microns (FMP)
           X=X*1.0D-8*FMP1
-          IF (KEY.GT.1) THEN
-              X=RG*(J-1)/(JND-1)
-          END IF
 C     Restrict wavelength range to specified interval.
           IF ((X.GE.WST).AND.(X.LE.WND)) THEN
              KCT=KCT+1
              OWL1(KCT)=X
-             IF (KEY.EQ.0) OFL1(KCT)=Y
-             IF (KEY.EQ.1) OFL1(KCT)=Y*X
-             IF (KEY.GT.1) THEN
+             OFL1(KCT)=Y
+             zzz=0.d0
+          END IF
+         END IF
+          IF (KEY.EQ.3) THEN
+              KCT=KCT+1
+              X=RG*(J-1)/(JND-1)
+              OWL1(KCT)=X
                 Y=DSIN(X)
                 OFL1(KCT)=Y
-             END IF
-             zzz=0.d0
+                zzz=0.D0
           END IF
       END DO
       IF (J.GT.199999) CALL PMDSTOP
 C     NOWL1=Number of wavelengths
     1 NOWL1=KCT
 C     If JKY=3 set up spline fit.
-      IF (JKY.EQ.3) THEN
+      IF ((JKY.EQ.3).AND.(KEY.NE.3)) THEN
          CALL SPLINE(OWL1,OFL1,NOWL1,1.0E31,1.0E31,OFT1)
       END IF
       KCT=0
       DO J=1,JND
-          IF (KEY.LT.2) THEN
+          IF (KEY.LT.3) THEN
           READ ( IN3, FMT2, END=2, ERR=90) X,Y
           Y=Y*SCL
 C     Convert wavelength to cgs units
           X=X*1.0D-8*FMP2
-          END IF
-          IF (KEY.GT.1) THEN
-              X=RG*(J-1)/(JND-1)
-          END IF
 C     Restrict wavelength range to specified interval.
           IF ((X.GE.WST).AND.(X.LE.WND)) THEN
              KCT=KCT+1
              OWL2(KCT)=X
              OFL2(KCT)=Y
-             IF (KEY.GT.1) THEN
+             zzz=0.d0
+          END IF
+          END IF
+          IF (KEY.EQ.3) THEN
+              KCT=KCT+1
+              X=RG*(J-1)/(JND-1)
+                OWL2(KCT)=X
                 Y=DCOS(X)
                 OFL2(KCT)=Y
-             END IF
-             zzz=0.d0
+                zzz=0.D0
           END IF
       END DO
       IF (J.GT.199999) CALL PMDSTOP
     2 NOWL2=KCT
 C     If JKY=3 set up spline fit.
-      IF (JKY.EQ.3) THEN
+      IF ((JKY.EQ.3).AND.(KEY.NE.3)) THEN
          CALL SPLINE(OWL2,OFL2,NOWL2,1.0E31,1.0E31,OFT2)
       END IF
 C
@@ -183,6 +190,10 @@ C     Interpolate to equal spacings in wavelength,
 C     first spectrum
 C     The number of subdivisions must be as large as the
 C     number of input wavelengths.
+      IF (KEY.EQ.3) THEN
+        K=NOWL1
+          IF (K.LT.NOWL2) K=NOWL2
+      END IF
       IF (K.LT.NOWL1-1) CALL PMDSTOP
       IF (K.LT.NOWL2-1) CALL PMDSTOP
 C     NOTE: K is the specified number of subintervals.
@@ -361,11 +372,11 @@ C      equal to the corresponding OFL1() point.
       END DO
    10 CONTINUE
 C     Normal output case.
-      IF (KEY.LT.2) THEN
+      IF (KEY.LT.3) THEN
       WRITE (NOUT2,102) OINTW1(L)*1.0D8,OINTF1(L)
       END IF
 C     Test of integration accuracy case.
-      IF (KEY.GE.2) THEN
+      IF (KEY.EQ.3) THEN
       WRITE (NOUT2,102) OINTW1(L),OINTF1(L)
       END IF
       zzz=0.d0
@@ -375,10 +386,6 @@ C     Set scan to start just before last scanned point.
 C    Interpolate second function to equal wavelength spacings,
 C    second spectrum
       IF (K.LT.NOWL2-2) CALL PMDSTOP
-C     If JKY=3 set up spline fit.
-      IF (JKY.EQ.3) THEN
-         CALL SPLINE(OWL2,OFL2,NOWL2,1.0E31,1.0E31,OFT2)
-      END IF
 C     NOTE: K is the specified number of subintervals.
 C     Set up equally spaced wavelengths in OINTWL2().
       DO L=1,K+1
@@ -552,10 +559,10 @@ C      equal to the corresponding OFL2() point.
         END IF
       END DO
    20 CONTINUE
-      IF (KEY.LT.2) THEN
+      IF (KEY.LT.3) THEN
       WRITE (NOUT3,102) OINTW2(L)*1.0D8,OINTF2(L)/1.0D-9
       END IF
-      IF (KEY.GE.2) THEN
+      IF (KEY.EQ.3) THEN
       WRITE (NOUT3,102) OINTW2(L),OINTF2(L)
       END IF
       zzz=0.d0
@@ -569,10 +576,21 @@ C
           BB=OINTF1(N)
           CC=OINTF2(N)
           CWL(N)=AA
+          IF ((KEY.EQ.0).OR.(KEY.EQ.3)) THEN
           CONV(N)=BB*CC
+          END IF
+          IF (KEY.EQ.1) THEN
+          CONV(N)=AA*BB*CC
+          END IF
+          IF (KEY.EQ.2) THEN
+          CONV(N)=AA*BB*CC
+          END IF  
           WRITE (NOUT4, 102) CWL(N)*1.0D8,CONV(N)/1.0D-9
       END DO
-C      OPEN (UNIT=61,FILE='SCRATCH',STATUS='REPLACE')
+C     Now have product function stored in array CONV(N)
+C     *********
+C     Evaluate numerator
+C     *********
       IF (ITG.EQ.0) THEN
 C     Integrate product function by trapezoidal rule.
 C     Note that there are K intervals, K+1 points.
@@ -591,7 +609,6 @@ C     Add ordinates.
                  END IF
              END IF
            AA=0.D0
-C           WRITE (61, 201) CWL(K+1),CWL(K),SM1
       END DO
 C     Calculate integral.
       SM1=SM1*H 
@@ -613,19 +630,47 @@ C     Integrate product function by Simpson's rule
       END DO
       SM1=SM1*CF
       END IF
+C     *******************
+C     Evaluate denominator.
+C     *******************
+C     *******************
+C     Start of integration section.
+C     *******************
       IF (ITG.EQ.0) THEN
-C     Integrate filter passband by trapezoidal rule
+C     Integrate filter passband by trapezoidal rule.
+C     K+1 points at the last point in the array.
       H=(OINTW1(K+1)-OINTW1(1))/K
 C     Calculate end point contributions.
-      SM2=OINTF1(1)+OINTF1(K+1)/2.D0
+      IF (KEY.EQ.0) THEN
+          SM2=(OINTF1(1)+OINTF1(K+1))/2.D0
+      END IF
+      IF (KEY.EQ.1) THEN
+          SM2=(OINTF1(1)*OINTW1(1)+OINTF1(K+1)*OINTW1(K+1))/2.D0
+      END IF
+      IF (KEY.EQ.2) THEN
+          SM2=(OINTF1(1)/OINTW1(1)*VC+OINTF1(K+1)/OINTW1(K+1)*VC)/2.D0
+      END IF
 C     Add ordinates
       DO L=2,K
-          SM2=SM2+OINTF1(L)
-          AA=0.D0
+          IF (KEY.EQ.0) THEN
+              SM2=SM2+OINTF1(L)
+              AA=0.D0
+          END IF
+          IF (KEY.EQ.1) THEN
+              SM2=SM2+OINTF1(L)*OINTW1(L)
+              AA=0.D0
+          END IF
+          IF (KEY.EQ.2) THEN
+              SM2=SM2+OINTF1(L)/OINTW1(L)*VC
+              AA=0.D0
+          END IF
       END DO
 C     Calculate integral.
       SM2=SM2*H
+      IF (KEY.EQ.2) SM2=SM2/1.0E8
       END IF
+C     End of integration by trapezoidal rule.
+C     *******************
       IF (ITG.EQ.1) THEN
 C     Integrate filter passband by Simpson's rule
       SM2=0.D0
@@ -637,27 +682,46 @@ C     Integrate filter passband by Simpson's rule
             A=OINTF1(JPT)
             B=OINTF1(JPT+1)
             C=OINTF1(JPT+2)
-            SM2=SM2+A+4.D0*B+C
+            W1=OINTW1(JPT)
+            W2=OINTW1(JPT+1)
+            W3=OINTW1(JPT+2)
+            IF (KEY.EQ.0) THEN
+                SM2=SM2+A+4.D0*B+C
+            END IF
+            IF (KEY.EQ.1) THEN
+                SM2=SM2+A*W1+4.D0*B*W2+C*W3
+            END IF
+            IF (KEY.EQ.2) THEN
+                SM2=SM2+A/W1*VC+4.D0*B/W2*VC+C/W3*VC
+            END IF
             JPT=JPT+2
             zzz=0.d0
       END DO
       SM2=SM2*CF
+      IF (KEY.EQ.2) SM2=SM2/1.0E8
       END IF
-      IF (KEY.LT.2) THEN
+C     *****************
+C     End of integration
+C     *****************
+      IF (KEY.LT.3) THEN
       SM=SM1/SM2
       A=SM1
       B=SM2
       C=SM
       VMG=-2.5*DLOG10(SM)
       D=VMG
+      IF (KEY.LE.1) THEN
       VMGC=VMG-21.1D0
+      END IF
+      IF (KEY.EQ.2) THEN
+      VMGC=VMG-48.60D0
+      END IF
       E=VMGC
       WRITE (NOUT1,104) D,A,B,C,E
       END IF
-      IF (KEY.GE.2) THEN
+      IF (KEY.EQ.3) THEN
       WRITE (NOUT1,101) SM1,SM2
-      END IF
-C      CLOSE (UNIT=61, STATUS='KEEP')      
+      END IF   
 C*********************************************************************
       CLOSE ( UNIT = IN1,      STATUS = 'KEEP')
       CLOSE ( UNIT = IN2,      STATUS = 'KEEP')
