@@ -61,6 +61,7 @@ C      READ (IN2, 100) BUF
       DO J=1,500000
           READ ( IN2, FMT1, END=1, ERR=90) OWL(J),OFL(J)
 		OFL(J)=OFL(J)/RF1
+                AAA=0.D0
       END DO
       CALL PMDSTOP
 C     NOWL=Number of wavelengths
@@ -72,6 +73,7 @@ C
       DO J=1,500000
           READ ( IN3, FMT2, END=2, ERR=91) WL(J),FL(J)
 		FL(J)=FL(J)/RF2
+                AAA=0.D0
       END DO
       CALL PMDSTOP
 C     NWL= Number of second spectrum wavelengths
@@ -85,7 +87,7 @@ C     The array FLB is the sum array.
 C     
 C     
 C
-   21 CALL SPPRC(NOWL,NWL,KK,KEY)
+      CALL SPPRC(NOWL,NWL,KK,KEY)
       DO J=1,KK
 		IF ((WLB(J).EQ.0.D0).AND.(CFL(J).EQ.0.D0)) GO TO 50
 		WRITE (NOUT1,FMT1) WLB(J),CFL(J)
@@ -98,7 +100,7 @@ C*********************************************************************
       CLOSE ( UNIT = NOUT1,    STATUS = 'KEEP')
       CLOSE ( UNIT = NOUT2,    STATUS = 'KEEP')
 C*********************************************************************
-   92 STOP
+      STOP
    90 CALL PMDSTOP
    91 CALL PMDSTOP
       END PROGRAM ADDSP
