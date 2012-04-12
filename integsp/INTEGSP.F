@@ -715,6 +715,7 @@ C     *****************
       END IF
       IF (KEY.EQ.2) THEN
       VMGC=VMG-48.60D0
+      D=VMGC+21.1D0
       END IF
       E=VMGC
       WRITE (NOUT1,104) D,A,B,C,E
