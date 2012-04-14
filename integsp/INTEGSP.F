@@ -641,7 +641,7 @@ C     Integrate filter passband by trapezoidal rule.
 C     K+1 points at the last point in the array.
       H=(OINTW1(K+1)-OINTW1(1))/K
 C     Calculate end point contributions.
-      IF (KEY.EQ.0) THEN
+      IF ((KEY.EQ.0).OR.(KEY.EQ.3)) THEN
           SM2=(OINTF1(1)+OINTF1(K+1))/2.D0
       END IF
       IF (KEY.EQ.1) THEN
@@ -652,7 +652,7 @@ C     Calculate end point contributions.
       END IF
 C     Add ordinates
       DO L=2,K
-          IF (KEY.EQ.0) THEN
+          IF ((KEY.EQ.0).OR.(KEY.EQ.3)) THEN
               SM2=SM2+OINTF1(L)
               AA=0.D0
           END IF
@@ -685,7 +685,7 @@ C     Integrate filter passband by Simpson's rule
             W1=OINTW1(JPT)
             W2=OINTW1(JPT+1)
             W3=OINTW1(JPT+2)
-            IF (KEY.EQ.0) THEN
+            IF ((KEY.EQ.0).OR.(KEY.EQ.3)) THEN
                 SM2=SM2+A+4.D0*B+C
             END IF
             IF (KEY.EQ.1) THEN
