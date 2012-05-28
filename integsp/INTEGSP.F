@@ -20,9 +20,10 @@ C     If KEY=3, integrate the product of sin(x)*cos(x), 0 to pi,
 C         and separately integrate sin(x), 0 to pi.
 C
       IMPLICIT DOUBLE PRECISION (A-H,O-Z)
-      DIMENSION OFL1(200000),OWL1(200000),OFL2(200000),OWL2(200000),
-     $ OINTW1(200000),OINTF1(200000),CWL(200000),CONV(200000),
-     $OINTW2(200000),OINTF2(200000),OFT1(200000),OFT2(200000),
+      DIMENSION OFL1(200000),OWL1(200000),OFL2(2000000),
+     $ OWL2(2000000),
+     $ OINTW1(2000000),OINTF1(2000000),CWL(2000000),CONV(2000000),
+     $OINTW2(2000000),OINTF2(2000000),OFT1(2000000),OFT2(2000000),
      $XARY(3),YARY(3)
       DIMENSION FL1(10)
       COMMON /NUNIT/ NU, NUOUT, IFOUT
@@ -64,14 +65,17 @@ C     Read second data file format
       CALL DUMMY(1)
 C     Read starting wavelength
       CALL DREAD (WST,  'F8.1' )
+C     Convert to cgs units.
       WST=WST*1.0D-8
       CALL DUMMY(1)
 C     Read ending wavelength
       CALL DREAD (WND,  'F8.1' )
+C     Convert to cgs units.
       WND=WND*1.0D-8
       CALL DUMMY(1)
 C     Read number of subintervals
-      CALL IREAD (NSD)
+      CALL DREAD (WSD, 'F10.1')
+      NSD=WSD
       CALL DUMMY(1)
 C     Read control for type integration weighting
       CALL IREAD (KEY)
@@ -90,11 +94,18 @@ C     (Spectrum)
       IF (IKY2.EQ.1) FMP2=1.D4
       IF (IKY2.EQ.2) FMP2=10.D0
       CALL DUMMY(3)
-C     Read control for type interpolation
-      CALL IREAD (JKY)
+C     Read control for type interpolation, numerator
+      CALL IREAD (JKY1)
 C     Don't use spline interpolation on sine, cosine
-      IF ((JKY.EQ.3).AND.(KEY.EQ.3)) THEN
-         JKY=2
+      IF ((JKY1.EQ.3).AND.(KEY.EQ.3)) THEN
+         JKY1=2
+      END IF      
+      CALL DUMMY(4)
+C     Read control for type interpolation, denominator
+      CALL IREAD (JKY2)
+C     Don't use spline interpolation on sine, cosine
+      IF ((JKY2.EQ.3).AND.(KEY.EQ.3)) THEN
+         JKY2=2
       END IF      
       CALL DUMMY(4)
 C     Read scaling factor to produce spectrum flux in correct units.
@@ -106,14 +117,14 @@ C     Be sure NSD is even number
       NSDA=NSD/2
       NSD=2*NSDA
 C     Set ER
-      ER=ER*1.0E-8*FMP
-C
+      ER=ER*1.0E-8*FMP2
+C     Initialize storage
 C     Determine wavelength range
       RG=WND-WST
 C     Set K equal to number of subdivisions
       K=NSD
-C     Set limit on number of entries to read in (200000).
-      JND=200000
+C     Set limit on number of entries to read in (20000000).
+      JND=2000000
       KCT=0
       PI=3.1415926535898D0
       IF (KEY.EQ.3) THEN
@@ -124,6 +135,9 @@ C     Set up test of integration accuracy.
         JND=7501
         IF (NSD+1.LT.JND) JND=NSD+1
       END IF
+C     ******************************
+C     Read data for first spectrum--> the filter
+C     ******************************
       DO J=1,JND
           IF (KEY.LT.3) THEN
 C     Read wavelength in Angstroms. This is the filter transmission function.
@@ -151,14 +165,23 @@ C     Restrict wavelength range to specified interval.
       IF (J.GT.199999) CALL PMDSTOP
 C     NOWL1=Number of wavelengths
     1 NOWL1=KCT
-C     If JKY=3 set up spline fit.
-      IF ((JKY.EQ.3).AND.(KEY.NE.3)) THEN
+C     ***************************
+C     End of input for first spectrum
+C     ***************************
+C     If JKY1=3 set up spline fit.
+      IF ((JKY1.EQ.3).AND.(KEY.NE.3)) THEN
          CALL SPLINE(OWL1,OFL1,NOWL1,1.0E31,1.0E31,OFT1)
       END IF
+C     ****************************
+C     Read in data for second spectrum
+C     ****************************
       KCT=0
+C     Set up test for number of input data points
+C      JTEST=0
       DO J=1,JND
           IF (KEY.LT.3) THEN
           READ ( IN3, FMT2, END=2, ERR=90) X,Y
+C     NOTE: if input is Eddington flux, SCL should =3.
           Y=Y*SCL
 C     Convert wavelength to cgs units
           X=X*1.0D-8*FMP2
@@ -168,6 +191,7 @@ C     Restrict wavelength range to specified interval.
              OWL2(KCT)=X
              OFL2(KCT)=Y
              zzz=0.d0
+      WRITE (NOUT3,102) OWL2(KCT)*1.0E8,OFL2(KCT)
           END IF
           END IF
           IF (KEY.EQ.3) THEN
@@ -179,34 +203,47 @@ C     Restrict wavelength range to specified interval.
                 zzz=0.D0
           END IF
       END DO
-      IF (J.GT.199999) CALL PMDSTOP
+      IF (J.GT.19999999) CALL PMDSTOP
     2 NOWL2=KCT
-C     If JKY=3 set up spline fit.
-      IF ((JKY.EQ.3).AND.(KEY.NE.3)) THEN
-         CALL SPLINE(OWL2,OFL2,NOWL2,1.0E31,1.0E31,OFT2)
-      END IF
+C     Test for high resolution input spectrum
+C      IF (NOWL2.GT.NSD) JTEST=1
+C     ***********************
+C     End of input, second spectrum
+C     ***********************
+C     If JKY2=3 set up spline fit.
+C     Do not do spline fit if we have high resolution spectrum.
+C      IF ((JKY2.EQ.3).AND.(KEY.NE.3).AND.(JTEST.NE.1)) THEN
+C         CALL SPLINE(OWL2,OFL2,NOWL2,1.0E31,1.0E31,OFT2)
+C      END IF
 C
-C     Interpolate to equal spacings in wavelength,
+C     Interpolate to spacings in wavelength of the second spectrum,
+C     **************************
 C     first spectrum
+C     **************************
 C     The number of subdivisions must be as large as the
 C     number of input wavelengths.
       IF (KEY.EQ.3) THEN
-        K=NOWL1
+C     (Integration accuracy test)
+        K=NSD
           IF (K.LT.NOWL2) K=NOWL2
       END IF
       IF (K.LT.NOWL1-1) CALL PMDSTOP
-      IF (K.LT.NOWL2-1) CALL PMDSTOP
 C     NOTE: K is the specified number of subintervals.
-C     Set up equally spaced wavelengths in OINTWL1().
+C     Set up specified wavelengths in OINTWL1().
+C      DO L=1,NOWL2
+C         A=OWL2(L)
+C         OINTW1(L)=A
+C         zzz=0.d0
+C      END DO
       DO L=1,K+1
-         A=RG*(L-1)/K+WST
+         A=(L-1)*RG/K+WST
          OINTW1(L)=A
          zzz=0.d0
       END DO
       KKST=1
 C     Interpolate a point into OINTFL1() for each point
 C     in OINTWL1().
-      DO L=1,K+1
+      DO L=1,NSD
         A=OINTW1(L)
 C     Find points in OWL1() that bracket the OINTWL1() point.
        DO KK=KKST,NOWL1-1
@@ -227,7 +264,7 @@ C     equal to the corresponding OFL1() point.
 C           GO TO 10
 C      If the two OWL1() points bracket A, interpolate linearly between the
 C      corresponding OFL1() points.
-        IF (JKY.EQ.0) THEN
+        IF (JKY1.EQ.0) THEN
            DF=RWL2-RWL1
            DFA=OINTW1(L)-RWL1
            H=DFA/DF
@@ -241,7 +278,7 @@ C      corresponding OFL1() points.
         END IF
 c        END IF
 C    Start of section for parabolic interpolation
-      IF (JKY.EQ.1) THEN
+      IF (JKY1.EQ.1) THEN
           IF (KK.EQ.1) THEN
             X1=RWL1
             X2=RWL2
@@ -319,7 +356,7 @@ C    Start of section for parabolic interpolation
           END IF
        END IF
 C     Start of section for interpolation by lagrange interpolation
-       IF (JKY.EQ.2) THEN
+       IF (JKY1.EQ.2) THEN
           IF (KK.LE.3) THEN
           XARY(1)=OWL1(1)
           XARY(2)=OWL1(2)
@@ -358,7 +395,7 @@ C     Start of section for interpolation by lagrange interpolation
           END IF
        END IF
 C     Set up interpolation by spline fit
-       IF (JKY.EQ.3) THEN
+       IF (JKY1.EQ.3) THEN
           CALL SPLINT(OWL1,OFL1,OFT1,NOWL1,A,OINTF1(L))
           GO TO 10
        END IF
@@ -383,11 +420,17 @@ C     Test of integration accuracy case.
 C     Set scan to start just before last scanned point.
       IF (KK.GT.2) KKST=KK-1
       END DO
+C    *************************
+C    End of interpolation section, first spectrum
+C    *************************
+C    *************************
 C    Interpolate second function to equal wavelength spacings,
+C    **************************
 C    second spectrum
-      IF (K.LT.NOWL2-2) CALL PMDSTOP
+C    **************************
 C     NOTE: K is the specified number of subintervals.
-C     Set up equally spaced wavelengths in OINTWL2().
+C     Set up equally spaced wavelengths in OINTW2() corresponding to
+C     same points in OINTW1()
       DO L=1,K+1
          A=RG*(L-1)/K+WST
          OINTW2(L)=A
@@ -416,7 +459,7 @@ C     equal to the corresponding OFL2() point.
 C      If the two OWL2() points bracket A, interpolate linearly between the
 C      corresponding OFL2() points.
         IF ((A.GT.RWL1).AND.(A.LT.RWL2)) THEN
-         IF (JKY.EQ.0) THEN
+         IF ((JKY2.EQ.0).OR.(JTEST.EQ.1)) THEN
            DF=RWL2-RWL1
            DFA=OINTW2(L)-RWL1
            H=DFA/DF
@@ -427,10 +470,11 @@ C      corresponding OFL2() points.
            OINTF2(L)=C+DLTA
            AA=0.D0
            GO TO 20
-C        END IF
+        END IF
         END IF
 C    Start of section for parabolic interpolation
-      IF (JKY.EQ.1) THEN        
+      IF ((JKY2.EQ.1).AND.(JTEST.NE.1)) THEN        
+
           IF (KK.EQ.1) THEN
             X1=RWL1
             X2=RWL2
@@ -507,7 +551,7 @@ C    Start of section for parabolic interpolation
           END IF
         END IF
 C     Start of section for interpolation by lagrange interpolation
-        IF (JKY.EQ.2) THEN
+        IF ((JKY2.EQ.2).AND.(JTEST.NE.1)) THEN
           IF (KK.LE.3) THEN
           XARY(1)=OWL2(1)
           XARY(2)=OWL2(2)
@@ -546,11 +590,10 @@ C     Start of section for interpolation by lagrange interpolation
           END IF
         END IF
 C     Set up for interpolation by spline
-        IF (JKY.EQ.3) THEN
+        IF ((JKY2.EQ.3).AND.(JTEST.NE.1)) THEN
            CALL SPLINT(OWL2,OFL2,OFT2,NOWL2,A,OINTF2(L))
            GO TO 20
         END IF
-      END IF
 C      If the second OWL2() point coincides with A, set OINTF2(L)
 C      equal to the corresponding OFL2() point.
         IF (DABS(A-RWL2).LE.ER) THEN
@@ -560,7 +603,7 @@ C      equal to the corresponding OFL2() point.
       END DO
    20 CONTINUE
       IF (KEY.LT.3) THEN
-      WRITE (NOUT3,102) OINTW2(L)*1.0D8,OINTF2(L)/1.0D-9
+      WRITE (NOUT3,102) OINTW2(L)*1.0D8,OINTF2(L)
       END IF
       IF (KEY.EQ.3) THEN
       WRITE (NOUT3,102) OINTW2(L),OINTF2(L)
@@ -569,50 +612,59 @@ C      equal to the corresponding OFL2() point.
 C     Set scan to start just before last scanned point.
       IF (KK.GT.2)KKST=KK-1 
       END DO
+C     **************************
+C     End of interpolation section, second spectrum
+C     **************************
+C
 C     Form product function
 C
-      DO N=1,K+1
+      DO N=1,NSD+1
+C     AA is the wavelength in cgs units.
           AA=OINTW1(N)
+C     BB is the first spectrum (filter) equivalent flux (dimensionless).
           BB=OINTF1(N)
+C     CC is the second spectrum (star spectrum) flux in cgs units.
           CC=OINTF2(N)
           CWL(N)=AA
           IF ((KEY.EQ.0).OR.(KEY.EQ.3)) THEN
+C     Form product function for case of flux spectra.
           CONV(N)=BB*CC
           END IF
+C     Form product function for case of photon counting.
           IF (KEY.EQ.1) THEN
-          CONV(N)=AA*BB*CC
+          CONV(N)=BB*CC
           END IF
+C     Form product for production of AB magnitudes.
           IF (KEY.EQ.2) THEN
           CONV(N)=AA*BB*CC
-          END IF  
-          WRITE (NOUT4, 102) CWL(N)*1.0D8,CONV(N)/1.0D-9
+          END IF
+          IF (KEY.NE.3) THEN  
+               WRITE (NOUT4, 102) CWL(N)*1.0D8,CONV(N)
+          END IF
+          IF (KEY.EQ.3) THEN  
+               WRITE (NOUT4, 102) CWL(N),CONV(N)
+          END IF
       END DO
 C     Now have product function stored in array CONV(N)
 C     *********
-C     Evaluate numerator
+C     Evaluate numerator. This is the product of the filter response
+C     function and the stellar flux (KEY=0).
 C     *********
-      IF (ITG.EQ.0) THEN
+      IF ((ITG.EQ.0).OR.(ITG.EQ.1)) THEN
 C     Integrate product function by trapezoidal rule.
-C     Note that there are K intervals, K+1 points.
-C     K is an even number.
-      H=(CWL(K+1)-CWL(1))/K
-C     Start with end point contributions.
-      SM1=CONV(1)+CONV(K+1)/2.D0
-C     Add ordinates.
-      TST=CONV(1)
-      DO L=2,K
-           SM1=SM1+CONV(L)
-             IF (CONV(L).GT. TST) THEN
-             TST=CONV(L)
-                 IF (TST.GT.1.0D-8) THEN
-                    BBB=0.D0
-                 END IF
-             END IF
+C     Note that there are NOWL2 intervals, NOWL2+1 points.
+C     
+      SM1=0.D0
+C     
+      DO L=2,NSD
+           H=OINTW1(L)-OINTW1(L-1)
+           ADD=(CONV(L)+CONV(L-1))/2.D0
+           SM1=SM1+ADD*H
            AA=0.D0
       END DO
-C     Calculate integral.
-      SM1=SM1*H 
       END IF
+C    NOTE! Simpson's Rule disabled because stellar spectrum will have
+C    unequally spaced wavelengths.
       IF (ITG.EQ.1) THEN     
 C     Integrate product function by Simpson's rule
       SM1=0.D0
@@ -632,41 +684,32 @@ C     Integrate product function by Simpson's rule
       END IF
 C     *******************
 C     Evaluate denominator.
+C     This is the integral over the filter response function (KEY=0). 
 C     *******************
 C     *******************
 C     Start of integration section.
 C     *******************
-      IF (ITG.EQ.0) THEN
+      IF ((ITG.EQ.0).OR.(ITG.EQ.1)) THEN
 C     Integrate filter passband by trapezoidal rule.
-C     K+1 points at the last point in the array.
-      H=(OINTW1(K+1)-OINTW1(1))/K
-C     Calculate end point contributions.
-      IF ((KEY.EQ.0).OR.(KEY.EQ.3)) THEN
-          SM2=(OINTF1(1)+OINTF1(K+1))/2.D0
-      END IF
-      IF (KEY.EQ.1) THEN
-          SM2=(OINTF1(1)*OINTW1(1)+OINTF1(K+1)*OINTW1(K+1))/2.D0
-      END IF
-      IF (KEY.EQ.2) THEN
-          SM2=(OINTF1(1)/OINTW1(1)*VC+OINTF1(K+1)/OINTW1(K+1)*VC)/2.D0
-      END IF
+      SM2=0.D0
 C     Add ordinates
-      DO L=2,K
+      DO L=2,NSD
+          H=OINTW1(L)-OINTW1(L-1)
           IF ((KEY.EQ.0).OR.(KEY.EQ.3)) THEN
-              SM2=SM2+OINTF1(L)
+              SM2=SM2+(OINTF1(L)+OINTF1(L-1))*H/2.D0
               AA=0.D0
           END IF
           IF (KEY.EQ.1) THEN
-              SM2=SM2+OINTF1(L)*OINTW1(L)
+              SM2=SM2+(OINTF1(L)+OINTF1(L-1))*H/2.D0
               AA=0.D0
           END IF
           IF (KEY.EQ.2) THEN
-              SM2=SM2+OINTF1(L)/OINTW1(L)*VC
+              BB=(OINTF1(L)*OINTW1(L)+OINTF1(L-1)*OINTW1(L-1))/VC
+              SM2=SM2+BB/2.D0
               AA=0.D0
           END IF
       END DO
-C     Calculate integral.
-      SM2=SM2*H
+C     
       IF (KEY.EQ.2) SM2=SM2/1.0E8
       END IF
 C     End of integration by trapezoidal rule.
@@ -689,7 +732,7 @@ C     Integrate filter passband by Simpson's rule
                 SM2=SM2+A+4.D0*B+C
             END IF
             IF (KEY.EQ.1) THEN
-                SM2=SM2+A*W1+4.D0*B*W2+C*W3
+                SM2=SM2+A+4.D0*B+C
             END IF
             IF (KEY.EQ.2) THEN
                 SM2=SM2+A/W1*VC+4.D0*B/W2*VC+C/W3*VC
@@ -710,11 +753,22 @@ C     *****************
       C=SM
       VMG=-2.5*DLOG10(SM)
       D=VMG
-      IF (KEY.LE.1) THEN
+C     For following equation see Bessell, 1998, A&A, 333, 231, p.242
+C     Note that KEY=0 requires use of flux-based filters.
+C     These are designated UFLT90.DAT, BFLT90.DAT, etc.
+      IF (KEY.EQ.0) THEN
       VMGC=VMG-21.1D0
       END IF
+C     If KEY=1, the same equation from Bessell, 1998, A&A, 333, 231
+C     applies but substitute the filters modified for photon counting.
+C     These are designated UFLT.DAT, BFLT.DAT, etc.
+      IF (KEY.EQ.1) THEN
+      VMGC=VMG-21.1D0
+      END IF
+C     If KEY=2, see Bessell & Murphy, 2012, PASP, 124, xxxx, equation 2.
       IF (KEY.EQ.2) THEN
       VMGC=VMG-48.60D0
+C     Produce a listing comparable to the KEY=0,1 output.
       D=VMGC+21.1D0
       END IF
       E=VMGC
