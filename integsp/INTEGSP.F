@@ -206,17 +206,17 @@ C     Restrict wavelength range to specified interval.
       IF (J.GT.19999999) CALL PMDSTOP
     2 NOWL2=KCT
 C     Test for high resolution input spectrum
-C      IF (NOWL2.GT.NSD) JTEST=1
+      IF (NOWL2.GT.NSD/2) JTEST=1
 C     ***********************
 C     End of input, second spectrum
 C     ***********************
 C     If JKY2=3 set up spline fit.
 C     Do not do spline fit if we have high resolution spectrum.
-C      IF ((JKY2.EQ.3).AND.(KEY.NE.3).AND.(JTEST.NE.1)) THEN
-C         CALL SPLINE(OWL2,OFL2,NOWL2,1.0E31,1.0E31,OFT2)
-C      END IF
+      IF ((JKY2.EQ.3).AND.(KEY.NE.3).AND.(JTEST.NE.1)) THEN
+         CALL SPLINE(OWL2,OFL2,NOWL2,1.0E31,1.0E31,OFT2)
+      END IF
 C
-C     Interpolate to spacings in wavelength of the second spectrum,
+C     Interpolate to spacings in wavelength set by NSD
 C     **************************
 C     first spectrum
 C     **************************
@@ -230,16 +230,20 @@ C     (Integration accuracy test)
       IF (K.LT.NOWL1-1) CALL PMDSTOP
 C     NOTE: K is the specified number of subintervals.
 C     Set up specified wavelengths in OINTWL1().
-C      DO L=1,NOWL2
-C         A=OWL2(L)
-C         OINTW1(L)=A
-C         zzz=0.d0
-C      END DO
+      IF (JTEST.EQ.1) THEN
+      DO L=1,NOWL2
+         A=OWL2(L)
+         OINTW1(L)=A
+         zzz=0.d0
+      END DO
+      END IF
+      IF (JTEST.NE.1) THEN
       DO L=1,K+1
          A=(L-1)*RG/K+WST
          OINTW1(L)=A
          zzz=0.d0
       END DO
+      END IF
       KKST=1
 C     Interpolate a point into OINTFL1() for each point
 C     in OINTWL1().
@@ -650,7 +654,7 @@ C     *********
 C     Evaluate numerator. This is the product of the filter response
 C     function and the stellar flux (KEY=0).
 C     *********
-      IF ((ITG.EQ.0).OR.(ITG.EQ.1)) THEN
+      IF (ITG.EQ.0) THEN
 C     Integrate product function by trapezoidal rule.
 C     Note that there are NOWL2 intervals, NOWL2+1 points.
 C     
@@ -663,8 +667,8 @@ C
            AA=0.D0
       END DO
       END IF
-C    NOTE! Simpson's Rule disabled because stellar spectrum will have
-C    unequally spaced wavelengths.
+C
+C    
       IF (ITG.EQ.1) THEN     
 C     Integrate product function by Simpson's rule
       SM1=0.D0
@@ -689,7 +693,7 @@ C     *******************
 C     *******************
 C     Start of integration section.
 C     *******************
-      IF ((ITG.EQ.0).OR.(ITG.EQ.1)) THEN
+      IF (ITG.EQ.0) THEN
 C     Integrate filter passband by trapezoidal rule.
       SM2=0.D0
 C     Add ordinates
