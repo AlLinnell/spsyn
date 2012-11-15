@@ -48,9 +48,9 @@ C
      $'Value of <f_nu>=',10X,E15.9,/,
      $'Value of AB(lambda)=',6X,E15.9,/,
      $'Value of <f_lambda>=',6X,E15.9,/,
-     $'Value of lambda(pivot)=',9X,F6.1,1X,'Angstroms'/,
-     $'Value of lambda0=',15X,F6.1,1X,'Angstroms'/,
-     $'Value of lambda(eff)=',11X,F6.1,1X,'Angstroms')
+     $'Value of lambda(pivot)=',9X,F7.1,1X,'Angstroms'/,
+     $'Value of lambda0=',15X,F7.1,1X,'Angstroms'/,
+     $'Value of lambda(eff)=',11X,F7.1,1X,'Angstroms')
 C*********************************************************************
       OPEN (UNIT = 10,     FILE ='INTEGSP.ILS',
      $STATUS = 'OLD')
