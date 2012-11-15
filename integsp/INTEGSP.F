@@ -40,6 +40,17 @@ C
   104 FORMAT ('Value of (mag)=',3X,F15.10,/,'Value of SM1=',8X,E15.9,/,
      $'Value of SM2=',8X,E15.9,/,
      $'Ratio, SM1/SM2=',6X,E15.9,/,'Value of VMGC=',4X,F15.10)
+  105 FORMAT ('Value of (mag)=',3X,F15.10,/,'Value of SM1=',8X,E15.9,/,
+     $'Value of SM2=',8X,E15.9,/,
+     $'Value of SM3=',8X,E15.9,/,
+     $'Value of SM4=',8X,E15.9)
+  106 FORMAT ('Value of AB(nu)=',10X,E15.9,/,
+     $'Value of <f_nu>=',10X,E15.9,/,
+     $'Value of AB(lambda)=',6X,E15.9,/,
+     $'Value of <f_lambda>=',6X,E15.9,/,
+     $'Value of lambda(pivot)=',9X,F6.1,1X,'Angstroms'/,
+     $'Value of lambda0=',15X,F6.1,1X,'Angstroms'/,
+     $'Value of lambda(eff)=',11X,F6.1,1X,'Angstroms')
 C*********************************************************************
       OPEN (UNIT = 10,     FILE ='INTEGSP.ILS',
      $STATUS = 'OLD')
@@ -630,40 +641,37 @@ C     BB is the first spectrum (filter) equivalent flux (dimensionless).
 C     CC is the second spectrum (star spectrum) flux in cgs units.
           CC=OINTF2(N)
           CWL(N)=AA
-          IF ((KEY.EQ.0).OR.(KEY.EQ.3)) THEN
-C     Form product function for case of flux spectra.
           CONV(N)=BB*CC
-          END IF
-C     Form product function for case of photon counting.
-          IF (KEY.EQ.1) THEN
-          CONV(N)=BB*CC
-          END IF
-C     Form product for production of AB magnitudes.
-          IF (KEY.EQ.2) THEN
-          CONV(N)=AA*BB*CC
-          END IF
           IF (KEY.NE.3) THEN  
                WRITE (NOUT4, 102) CWL(N)*1.0D8,CONV(N)
           END IF
           IF (KEY.EQ.3) THEN  
                WRITE (NOUT4, 102) CWL(N),CONV(N)
           END IF
+          ZZ=0.D0
       END DO
 C     Now have product function stored in array CONV(N)
 C     *********
-C     Evaluate numerator. This is the product of the filter response
-C     function and the stellar flux (KEY=0).
+C     Evaluate numerator functions. 
 C     *********
       IF (ITG.EQ.0) THEN
 C     Integrate product function by trapezoidal rule.
 C     Note that there are NOWL2 intervals, NOWL2+1 points.
 C     
       SM1=0.D0
+      SM3=0.D0
+      SM6=0.D0
 C     
-      DO L=2,NSD
+      DO L=2,NSD+1
            H=OINTW1(L)-OINTW1(L-1)
            ADD=(CONV(L)+CONV(L-1))/2.D0
+           ADDA=(CONV(L)*OINTW1(L)+CONV(L-1)*OINTW1(L-1))/2.D0
+           SQ1=OINTW1(L)**2
+           SQ2=OINTW1(L-1)**2
+           ADDB=(CONV(L)*SQ1+CONV(L-1)*SQ2)/2.D0
            SM1=SM1+ADD*H
+           SM3=SM3+ADDA*H
+           SM6=SM6+ADDB*H
            AA=0.D0
       END DO
       END IF
@@ -672,6 +680,8 @@ C
       IF (ITG.EQ.1) THEN     
 C     Integrate product function by Simpson's rule
       SM1=0.D0
+      SM3=0.D0
+      SM6=0.D0
       H=(CWL(K+1)-CWL(1))/K
       CF=H/3.D0
       LM=K/2
@@ -680,11 +690,21 @@ C     Integrate product function by Simpson's rule
             A=CONV(JPT)
             B=CONV(JPT+1)
             C=CONV(JPT+2)
+            A1=CONV(JPT)*CWL(JPT)
+            B1=CONV(JPT+1)*CWL(JPT+1)
+            C1=CONV(JPT+2)*CWL(JPT+2)
+            A2=CONV(JPT)*CWL(JPT)**2
+            B2=CONV(JPT+1)*CWL(JPT+1)**2
+            C2=CONV(JPT+2)*CWL(JPT+2)**2
             SM1=SM1+A+4.D0*B+C
+            SM3=SM3+A1+4.D0*B1+C1
+            SM6=SM6+A2+4.D0*B2+C2
             JPT=JPT+2
             zzz=0.d0
       END DO
       SM1=SM1*CF
+      SM3=SM3*CF
+      SM6=SM6*CF
       END IF
 C     *******************
 C     Evaluate denominator.
@@ -696,31 +716,29 @@ C     *******************
       IF (ITG.EQ.0) THEN
 C     Integrate filter passband by trapezoidal rule.
       SM2=0.D0
+      SM4=0.D0
+      SM5=0.D0
 C     Add ordinates
       DO L=2,NSD
           H=OINTW1(L)-OINTW1(L-1)
-          IF ((KEY.EQ.0).OR.(KEY.EQ.3)) THEN
               SM2=SM2+(OINTF1(L)+OINTF1(L-1))*H/2.D0
+              SM4=SM4+(OINTF1(L)*OINTW1(L)+OINTF1(L-1)*OINTW1(L-1))*H/
+     $2.D0
+              SM5=SM5+(OINTF1(L)/OINTW1(L)+OINTF1(L-1)/OINTW1(L-1))
+     $*H/2.D0
               AA=0.D0
-          END IF
-          IF (KEY.EQ.1) THEN
-              SM2=SM2+(OINTF1(L)+OINTF1(L-1))*H/2.D0
-              AA=0.D0
-          END IF
-          IF (KEY.EQ.2) THEN
-              BB=(OINTF1(L)*OINTW1(L)+OINTF1(L-1)*OINTW1(L-1))/VC
-              SM2=SM2+BB/2.D0
-              AA=0.D0
-          END IF
       END DO
+      SM7=SM5*VC*1.0E-8
 C     
-      IF (KEY.EQ.2) SM2=SM2/1.0E8
+C      IF (KEY.EQ.2) SM2=SM2/1.0E8
       END IF
 C     End of integration by trapezoidal rule.
 C     *******************
       IF (ITG.EQ.1) THEN
 C     Integrate filter passband by Simpson's rule
       SM2=0.D0
+      SM4=0.D0
+      SM5=0.D0
       H=(OINTW1(K+1)-OINTW1(1))/K
       CF=H/3.D0
       LM=K/2
@@ -732,20 +750,17 @@ C     Integrate filter passband by Simpson's rule
             W1=OINTW1(JPT)
             W2=OINTW1(JPT+1)
             W3=OINTW1(JPT+2)
-            IF ((KEY.EQ.0).OR.(KEY.EQ.3)) THEN
                 SM2=SM2+A+4.D0*B+C
-            END IF
-            IF (KEY.EQ.1) THEN
-                SM2=SM2+A+4.D0*B+C
-            END IF
-            IF (KEY.EQ.2) THEN
-                SM2=SM2+A/W1*VC+4.D0*B/W2*VC+C/W3*VC
-            END IF
+                SM4=SM4+A*W1+4.D0*B*W2+C*W3
+                SM5=SM5+A/W1+4.D0*B/W2+C/W3
             JPT=JPT+2
             zzz=0.d0
       END DO
       SM2=SM2*CF
-      IF (KEY.EQ.2) SM2=SM2/1.0E8
+      SM4=SM4*CF
+      SM5=SM5*CF
+      SM7=SM5*VC*1.0E-8
+C      IF (KEY.EQ.2) SM2=SM2/1.0E8
       END IF
 C     *****************
 C     End of integration
@@ -762,22 +777,35 @@ C     Note that KEY=0 requires use of flux-based filters.
 C     These are designated UFLT90.DAT, BFLT90.DAT, etc.
       IF (KEY.EQ.0) THEN
       VMGC=VMG-21.1D0
+      GO TO 50
       END IF
 C     If KEY=1, the same equation from Bessell, 1998, A&A, 333, 231
 C     applies but substitute the filters modified for photon counting.
 C     These are designated UFLT.DAT, BFLT.DAT, etc.
       IF (KEY.EQ.1) THEN
       VMGC=VMG-21.1D0
+      GO TO 50
       END IF
-C     If KEY=2, see Bessell & Murphy, 2012, PASP, 124, xxxx, equation 2.
+C     If KEY=2, see Bessell & Murphy, 2012, PASP, 124, 140.
       IF (KEY.EQ.2) THEN
+      SM=SM3/SM7
+      RATIO=SM3/SM4
+      VMG=-2.5*DLOG10(SM)
       VMGC=VMG-48.60D0
+      ABlam=-2.5*DLOG10(SM3/SM4)-21.1
+      VLAM0=SM4/SM2*1.0D8
+      VLAMEFF=SM6/SM3*1.0D8
+      VLAMP=DSQRT(SM4/SM5)*1.0D8
+      WRITE (NOUT1,105) VMG,A,B,SM3,SM4
+      WRITE (NOUT1,106) VMGC,SM,ABlam,RATIO,VLAMP,VLAM0,VLAMEFF
+      GO TO 51 
 C     Produce a listing comparable to the KEY=0,1 output.
-      D=VMGC+21.1D0
       END IF
+   50 CONTINUE
       E=VMGC
       WRITE (NOUT1,104) D,A,B,C,E
       END IF
+   51 CONTINUE
       IF (KEY.EQ.3) THEN
       WRITE (NOUT1,101) SM1,SM2
       END IF   
